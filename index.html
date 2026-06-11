@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SUPPLY 確認 — 消耗品スマホ確認</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#070d0d;--bg-2:#0c1414;--panel:#101a1a;--panel-2:#152222;
+  --line:#1f3030;--line-soft:#172626;--txt:#e6f0ee;--txt-dim:#86a39d;--txt-faint:#587570;
+  --accent:#2dd4bf;--accent-2:#5eead4;--accent-glow:rgba(45,212,191,.16);--accent-ink:#04201c;
+  --green:#4ade80;--amber:#fbbf24;--red:#fb7185;--blue:#60a5fa;
+  --radius:14px;--mono:'JetBrains Mono',monospace;--jp:'Zen Kaku Gothic New',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{min-height:100%}
+body{
+  background:radial-gradient(900px 500px at 80% -10%,rgba(45,212,191,.10),transparent 60%),var(--bg);
+  color:var(--txt);font-family:var(--jp);-webkit-font-smoothing:antialiased;min-height:100vh;background-attachment:fixed;padding-bottom:50px;
+}
+.wrap{max-width:600px;margin:0 auto;padding:18px 14px 60px}
+header{display:flex;align-items:center;gap:13px;margin-bottom:16px}
+.logo{width:44px;height:44px;border-radius:12px;flex-shrink:0;background:linear-gradient(135deg,var(--accent),#0d9488);display:grid;place-items:center;box-shadow:0 8px 26px var(--accent-glow),inset 0 1px 0 rgba(255,255,255,.25)}
+.logo svg{width:24px;height:24px}
+.brand h1{font-size:12px;letter-spacing:.34em;font-weight:800;font-family:var(--mono)}
+.brand .sub{font-size:11px;color:var(--txt-dim);letter-spacing:.12em;margin-top:3px;font-weight:500}
+button{font-family:var(--jp);cursor:pointer;border:none;transition:all .16s ease}
+.databar{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 14px;margin-bottom:14px}
+.databar .st{font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:8px;min-width:0}
+.databar .st .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:var(--red);box-shadow:0 0 8px var(--red)}
+.databar.loaded .st .dot{background:var(--green);box-shadow:0 0 8px var(--green)}
+.databar .st span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.databar .load button{background:var(--panel-2);border:1px solid var(--line);color:var(--txt-dim);padding:10px 14px;border-radius:10px;font-size:12.5px;font-weight:700;white-space:nowrap}
+.databar .load button:active{transform:translateY(1px);color:var(--txt)}
+.help{font-size:11px;color:var(--txt-faint);line-height:1.6;margin:-6px 2px 14px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.stat{background:linear-gradient(160deg,var(--panel),var(--bg-2));border:1px solid var(--line);border-radius:var(--radius);padding:13px 15px;position:relative;overflow:hidden}
+.stat::after{content:"";position:absolute;top:0;left:0;width:3px;height:100%;background:var(--accent);opacity:.7}
+.stat.s-green::after{background:var(--green)}.stat.s-amber::after{background:var(--amber)}.stat.s-red::after{background:var(--red)}.stat.s-blue::after{background:var(--blue)}
+.stat .k{font-size:9.5px;letter-spacing:.16em;color:var(--txt-dim);font-family:var(--mono);font-weight:600;text-transform:uppercase}
+.stat .v{font-size:26px;font-weight:800;font-family:var(--mono);margin-top:5px;line-height:1;letter-spacing:-.02em}
+.stat .v.sm{font-size:19px}
+.stat .u{font-size:12px;color:var(--txt-faint);margin-left:4px;font-weight:500}
+.search{position:relative;margin-bottom:12px}
+.search svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:17px;height:17px;color:var(--txt-faint)}
+.search input{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:13px 14px 13px 42px;color:var(--txt);font-size:15px;font-family:var(--jp);outline:none}
+.search input:focus{border-color:var(--accent)}
+.search input::placeholder{color:var(--txt-faint)}
+.filters{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
+.chip{padding:9px 14px;border-radius:10px;font-size:12.5px;font-weight:600;background:var(--panel);border:1px solid var(--line);color:var(--txt-dim)}
+.chip:active{color:var(--txt)}.chip.active{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.list{display:flex;flex-direction:column;gap:10px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:13px 15px}
+.card.warn{border-color:rgba(251,113,133,.35);background:rgba(251,113,133,.04)}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.c-name{font-weight:700;font-size:15px;line-height:1.3}
+.c-cat{font-size:10.5px;color:var(--txt-faint);margin-top:2px;font-family:var(--mono);letter-spacing:.04em}
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;padding:5px 10px;border-radius:7px;white-space:nowrap;flex-shrink:0}
+.badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.b-ok{color:var(--green);background:rgba(74,222,128,.12)}
+.b-low{color:var(--amber);background:rgba(251,191,36,.12)}
+.b-out{color:var(--red);background:rgba(251,113,133,.12)}
+.gauge{margin-top:11px}
+.gauge .nums{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--mono);font-size:12px;margin-bottom:5px}
+.gauge .nums b{font-weight:800;font-size:17px}
+.gauge .nums .rp{color:var(--txt-faint)}
+.gauge .bar{height:7px;border-radius:4px;background:var(--line);overflow:hidden;position:relative}
+.gauge .bar i{display:block;height:100%;border-radius:4px}
+.gauge .bar .rpmark{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--amber);opacity:.9}
+.c-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:11px;font-size:12.5px}
+.sup{color:var(--txt-dim)}
+.sup-link{color:var(--accent);text-decoration:none;border-bottom:1px dashed rgba(45,212,191,.45)}
+.price{font-family:var(--mono);font-weight:600;color:var(--txt-dim)}
+.empty{text-align:center;padding:50px 18px;color:var(--txt-faint)}
+.empty svg{width:42px;height:42px;opacity:.4;margin-bottom:12px}
+.empty p{font-size:14px}.empty .hint{font-size:12px;margin-top:6px;line-height:1.6}
+footer{margin-top:22px;font-size:11px;color:var(--txt-faint);font-family:var(--mono);text-align:center;line-height:1.7}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="var(--accent-ink)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18l-2 13H5L3 6z"/><path d="M3 6L2 3"/><circle cx="9" cy="20" r="1"/><circle cx="17" cy="20" r="1"/><path d="M8 10v5M12 10v5M16 10v5"/></svg></div>
+    <div class="brand"><h1>SUPPLY 確認</h1><div class="sub">消耗品 スマホ確認ビュー（読み取り専用）</div></div>
+  </header>
+
+  <div class="databar" id="databar">
+    <div class="st"><span class="dot"></span><span id="dataStatus">データ未読込</span></div>
+    <div class="load"><button onclick="pickBackup()">データ読込</button></div>
+  </div>
+  <div class="help" id="help">
+    PCの消耗品管理システムが共有フォルダへ自動保存した <b>supply_backup.json</b> を「データ読込」で選ぶと表示されます。一度読み込めば次回からは開くだけで前回のデータが出ます（在庫が変わったら再度「データ読込」で更新）。
+  </div>
+
+  <section class="stats hidden" id="stats"></section>
+
+  <div class="search hidden" id="searchBox">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="text" placeholder="品名・カテゴリ・仕入先で検索…" oninput="render()">
+  </div>
+  <div class="filters hidden" id="filters"></div>
+
+  <div class="list" id="list"></div>
+
+  <div class="empty" id="empty">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 6h18l-2 13H5L3 6z"/><circle cx="9" cy="20" r="1"/><circle cx="17" cy="20" r="1"/></svg>
+    <p>データが読み込まれていません</p>
+    <p class="hint">上の「データ読込」から、共有フォルダの<br>supply_backup.json を選んでください</p>
+  </div>
+
+  <footer>
+    読み取り専用 · 編集はPCの消耗品管理システムで<br>
+    SUPPLY 確認ビュー v1.0 · GitHub Pages版
+  </footer>
+</div>
+
+<input type="file" id="backupInput" accept=".json,application/json" class="hidden">
+
+<script>
+const VKEY='supply_view_v1';
+let store={items:[],settings:null,exportedAt:null,loadedAt:null};
+let activeFilter='all';
+
+function yen(n){return '¥'+Number(n||0).toLocaleString('ja-JP')}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function jsAttr(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;')}
+function safeUrl(u){u=String(u||'').trim();return /^https?:\/\//i.test(u)?u:''}
+function statusOf(i){if(Number(i.qty)<=0)return 'out';if(Number(i.rp)>0&&Number(i.qty)<=Number(i.rp))return 'low';return 'ok'}
+const STLABEL={ok:{l:'十分',c:'b-ok'},low:{l:'要発注',c:'b-low'},out:{l:'在庫切れ',c:'b-out'}};
+function needsOrder(i){const s=statusOf(i);return s==='low'||s==='out'}
+const STORDER={out:0,low:1,ok:2};
+
+/* ---------- data load ---------- */
+function loadStore(){
+  try{const d=JSON.parse(localStorage.getItem(VKEY));if(d&&Array.isArray(d.items))store=d}catch(e){}
+  reflect();
+}
+function saveStore(){try{localStorage.setItem(VKEY,JSON.stringify(store))}catch(e){alert('保存できませんでした（端末の空き容量をご確認ください）。表示は今回のみ有効です。')}}
+function pickBackup(){document.getElementById('backupInput').click()}
+document.getElementById('backupInput').addEventListener('change',e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{try{
+    const d=JSON.parse(r.result);
+    const arr=Array.isArray(d)?d:d.items;
+    if(!Array.isArray(arr))throw 0;
+    store={items:arr,settings:(d&&d.settings)||null,exportedAt:(d&&d.exportedAt)||null,loadedAt:Date.now()};
+    saveStore();reflect();render();
+    alert(arr.length+'件のデータを読み込みました。');
+  }catch(err){alert('読み込めませんでした。消耗品管理システムの「バックアップ」JSON（supply_backup.json）を選択してください。')}};
+  r.readAsText(f);
+});
+function fmtDate(ts){if(!ts)return '';const d=new Date(ts);return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`}
+function reflect(){
+  const bar=document.getElementById('databar'),st=document.getElementById('dataStatus');
+  const has=store.items.length>0;
+  ['stats','searchBox','filters'].forEach(id=>document.getElementById(id).classList.toggle('hidden',!has));
+  document.getElementById('help').classList.toggle('hidden',has);
+  if(has){
+    bar.classList.add('loaded');
+    const ex=store.exportedAt?new Date(store.exportedAt):null;
+    const exs=ex&&!isNaN(ex)?`${ex.getFullYear()}/${String(ex.getMonth()+1).padStart(2,'0')}/${String(ex.getDate()).padStart(2,'0')} ${String(ex.getHours()).padStart(2,'0')}:${String(ex.getMinutes()).padStart(2,'0')}`:'';
+    st.textContent=`${store.items.length}件 · データ${exs?'：'+exs:'（読込 '+fmtDate(store.loadedAt)+'）'}`;
+  }else{
+    bar.classList.remove('loaded');
+    st.textContent='データ未読込';
+  }
+}
+
+/* ---------- render ---------- */
+function setFilter(c){activeFilter=c;render()}
+function renderStats(){
+  const items=store.items;
+  const n=items.length;
+  const need=items.filter(needsOrder).length;
+  const out=items.filter(i=>statusOf(i)==='out').length;
+  const val=items.reduce((a,b)=>a+(Number(b.qty)||0)*(Number(b.price)||0),0);
+  document.getElementById('stats').innerHTML=`
+    <div class="stat"><div class="k">登録品目</div><div class="v">${n}<span class="u">件</span></div></div>
+    <div class="stat ${need>0?'s-amber':'s-green'}"><div class="k">要発注</div><div class="v">${need}<span class="u">件</span></div></div>
+    <div class="stat ${out>0?'s-red':'s-green'}"><div class="k">在庫切れ</div><div class="v">${out}<span class="u">件</span></div></div>
+    <div class="stat s-blue"><div class="k">在庫評価額</div><div class="v sm">${yen(val)}</div></div>`;
+}
+function renderFilters(){
+  const cats=[...new Set(store.items.map(i=>i.cat).filter(Boolean))];
+  document.getElementById('filters').innerHTML=
+    `<button class="chip ${activeFilter==='all'?'active':''}" onclick="setFilter('all')">すべて</button>`+
+    `<button class="chip ${activeFilter==='__need'?'active':''}" onclick="setFilter('__need')">⚠ 要発注</button>`+
+    cats.map(c=>`<button class="chip ${activeFilter===c?'active':''}" onclick="setFilter('${jsAttr(c)}')">${esc(c)}</button>`).join('');
+}
+function render(){
+  if(!store.items.length){document.getElementById('empty').style.display='block';document.getElementById('list').innerHTML='';return}
+  renderStats();renderFilters();
+  const q=(document.getElementById('search').value||'').trim().toLowerCase();
+  let list=store.items.filter(i=>{
+    if(activeFilter==='__need'){if(!needsOrder(i))return false}
+    else if(activeFilter!=='all'&&i.cat!==activeFilter)return false;
+    if(q){if(!((i.name||'')+' '+(i.cat||'')+' '+(i.sup||'')).toLowerCase().includes(q))return false}
+    return true;
+  });
+  list.sort((a,b)=>{const d=STORDER[statusOf(a)]-STORDER[statusOf(b)];if(d)return d;return String(a.name||'').localeCompare(String(b.name||''),'ja')});
+  const el=document.getElementById('list');
+  document.getElementById('empty').style.display=list.length?'none':'block';
+  if(!list.length){el.innerHTML='';document.getElementById('empty').querySelector('p').textContent='該当する消耗品がありません';document.getElementById('empty').querySelector('.hint').textContent='検索条件・フィルタを変更してください';return}
+  el.innerHTML=list.map(i=>{
+    const s=statusOf(i),st=STLABEL[s];
+    const rp=Number(i.rp)||0,qv=Number(i.qty)||0;
+    const cap=Math.max(rp*2,qv,1);
+    const pct=Math.min(qv/cap*100,100),rpPct=Math.min(rp/cap*100,100);
+    const col=s==='out'?'var(--red)':s==='low'?'var(--amber)':'var(--accent)';
+    const u=safeUrl(i.url);
+    const supTxt=esc(i.sup||(u?'購入先':'—'));
+    const supHtml=u?`<a class="sup-link" href="${u}" target="_blank" rel="noopener">${supTxt} ↗</a>`:`<span class="sup">${supTxt}</span>`;
+    return `<div class="card ${s!=='ok'?'warn':''}">
+      <div class="card-top">
+        <div><div class="c-name">${esc(i.name)}</div><div class="c-cat">${esc(i.cat||'未分類')}</div></div>
+        <span class="badge ${st.c}">${st.l}</span>
+      </div>
+      <div class="gauge">
+        <div class="nums"><b style="color:${col}">${qv}<span class="u" style="font-size:12px;color:var(--txt-faint);margin-left:2px">${esc(i.unit||'')}</span></b><span class="rp">発注点 ${rp}${esc(i.unit||'')}</span></div>
+        <div class="bar"><i style="width:${pct}%;background:${col}"></i>${rp>0?`<span class="rpmark" style="left:${rpPct}%"></span>`:''}</div>
+      </div>
+      <div class="c-foot">${supHtml}<span class="price">${Number(i.price)>0?yen(i.price):'—'}</span></div>
+    </div>`;
+  }).join('');
+}
+
+/* ---------- init ---------- */
+loadStore();
+render();
+</script>
+</body>
+</html>
