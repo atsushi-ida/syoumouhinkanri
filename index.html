@@ -64,6 +64,9 @@ button{font-family:var(--jp);cursor:pointer;border:none;transition:all .16s ease
 .b-ok{color:var(--green);background:rgba(74,222,128,.12)}
 .b-low{color:var(--amber);background:rgba(251,191,36,.12)}
 .b-out{color:var(--red);background:rgba(251,113,133,.12)}
+.b-ord{color:var(--blue);background:rgba(96,165,250,.14)}
+.badges{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.stat .meta{font-size:10px;color:var(--txt-dim);margin-top:2px}
 .gauge{margin-top:11px}
 .gauge .nums{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--mono);font-size:12px;margin-bottom:5px}
 .gauge .nums b{font-weight:800;font-size:17px}
@@ -133,6 +136,9 @@ function safeUrl(u){u=String(u||'').trim();return /^https?:\/\//i.test(u)?u:''}
 function statusOf(i){if(Number(i.qty)<=0)return 'out';if(Number(i.rp)>0&&Number(i.qty)<=Number(i.rp))return 'low';return 'ok'}
 const STLABEL={ok:{l:'十分',c:'b-ok'},low:{l:'要発注',c:'b-low'},out:{l:'在庫切れ',c:'b-out'}};
 function needsOrder(i){const s=statusOf(i);return s==='low'||s==='out'}
+// 2026-10-24: 本体と同じく「発注済み」の品は要発注の件数に数えない（店頭での二重買いを防ぐ）
+function pendingOrder(i){return needsOrder(i)&&!i.ordered}
+function fmtMD(ts){const d=new Date(Number(ts));return isNaN(d)?'':`${d.getMonth()+1}/${d.getDate()}`}
 const STORDER={out:0,low:1,ok:2};
 
 /* ---------- data load ---------- */
@@ -177,12 +183,13 @@ function setFilter(c){activeFilter=c;render()}
 function renderStats(){
   const items=store.items;
   const n=items.length;
-  const need=items.filter(needsOrder).length;
+  const need=items.filter(pendingOrder).length;
+  const ordCnt=items.filter(i=>needsOrder(i)&&i.ordered).length;
   const out=items.filter(i=>statusOf(i)==='out').length;
   const val=items.reduce((a,b)=>a+(Number(b.qty)||0)*(Number(b.price)||0),0);
   document.getElementById('stats').innerHTML=`
     <div class="stat"><div class="k">登録品目</div><div class="v">${n}<span class="u">件</span></div></div>
-    <div class="stat ${need>0?'s-amber':'s-green'}"><div class="k">要発注</div><div class="v">${need}<span class="u">件</span></div></div>
+    <div class="stat ${need>0?'s-amber':'s-green'}"><div class="k">要発注</div><div class="v">${need}<span class="u">件</span></div>${ordCnt>0?`<div class="meta">ほか ${ordCnt}件 発注済み</div>`:''}</div>
     <div class="stat ${out>0?'s-red':'s-green'}"><div class="k">在庫切れ</div><div class="v">${out}<span class="u">件</span></div></div>
     <div class="stat s-blue"><div class="k">在庫評価額</div><div class="v sm">${yen(val)}</div></div>`;
 }
@@ -203,7 +210,7 @@ function render(){
     if(q){if(!((i.name||'')+' '+(i.cat||'')+' '+(i.sup||'')).toLowerCase().includes(q))return false}
     return true;
   });
-  list.sort((a,b)=>{const d=STORDER[statusOf(a)]-STORDER[statusOf(b)];if(d)return d;return String(a.name||'').localeCompare(String(b.name||''),'ja')});
+  list.sort((a,b)=>{const d=STORDER[statusOf(a)]-STORDER[statusOf(b)];if(d)return d;const o=(a.ordered?1:0)-(b.ordered?1:0);if(o)return o;return String(a.name||'').localeCompare(String(b.name||''),'ja')});
   const el=document.getElementById('list');
   document.getElementById('empty').style.display=list.length?'none':'block';
   if(!list.length){el.innerHTML='';document.getElementById('empty').querySelector('p').textContent='該当する消耗品がありません';document.getElementById('empty').querySelector('.hint').textContent='検索条件・フィルタを変更してください';return}
@@ -219,7 +226,7 @@ function render(){
     return `<div class="card ${s!=='ok'?'warn':''}">
       <div class="card-top">
         <div><div class="c-name">${esc(i.name)}</div><div class="c-cat">${esc(i.cat||'未分類')}</div></div>
-        <span class="badge ${st.c}">${st.l}</span>
+        <div class="badges"><span class="badge ${st.c}">${st.l}</span>${(needsOrder(i)&&i.ordered)?`<span class="badge b-ord">発注済 ${esc(fmtMD(i.ordered))}</span>`:''}</div>
       </div>
       <div class="gauge">
         <div class="nums"><b style="color:${col}">${qv}<span class="u" style="font-size:12px;color:var(--txt-faint);margin-left:2px">${esc(i.unit||'')}</span></b><span class="rp">発注点 ${rp}${esc(i.unit||'')}</span></div>
