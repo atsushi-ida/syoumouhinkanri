@@ -118,7 +118,7 @@ footer{margin-top:22px;font-size:11px;color:var(--txt-faint);font-family:var(--m
 
   <footer>
     読み取り専用 · 編集はPCの消耗品管理システムで<br>
-    SUPPLY 確認ビュー v1.0 · GitHub Pages版
+    SUPPLY 確認ビュー v1.1 · GitHub Pages版
   </footer>
 </div>
 
@@ -148,30 +148,42 @@ function loadStore(){
 }
 function saveStore(){try{localStorage.setItem(VKEY,JSON.stringify(store))}catch(e){alert('保存できませんでした（端末の空き容量をご確認ください）。表示は今回のみ有効です。')}}
 function pickBackup(){document.getElementById('backupInput').click()}
+// 本体（消耗品管理システム.html）の backupRejectReason と同じ判定＝直すときは両方
+function backupRejectReason(d){
+  if(!d||typeof d!=='object')return '中身がバックアップの形ではありません';
+  const arr=Array.isArray(d)?d:d.items;if(!Array.isArray(arr))return '品目（items）が入っていません';
+  const app=(!Array.isArray(d)&&d.app!=null)?String(d.app):'';
+  if(app&&!/^SUPPLY\b/.test(app))return `別のアプリのファイルです（${app}）`;
+  if(!app&&arr.some(x=>x&&typeof x==='object'&&('depMethod' in x||'acq' in x||'location' in x)))return '備品管理システムのファイルのようです（取得日・償却方法の項目があります）';
+  return null;
+}
 document.getElementById('backupInput').addEventListener('change',e=>{
   const f=e.target.files[0];e.target.value='';if(!f)return;
   const r=new FileReader();
   r.onload=()=>{try{
     const d=JSON.parse(r.result);
+    // 2026-10-25（D-3）: 消耗品（SUPPLY）以外のファイル（備品の inventory_backup.json など）は断る
+    const why=backupRejectReason(d);
+    if(why){alert('このファイルは消耗品のバックアップではないので、読み込みませんでした。\n理由：'+why+'\n（supply_backup.json を選んでください）');return}
     const arr=Array.isArray(d)?d:d.items;
-    if(!Array.isArray(arr))throw 0;
-    store={items:arr,settings:(d&&d.settings)||null,exportedAt:(d&&d.exportedAt)||null,loadedAt:Date.now()};
+    store={items:arr.filter(x=>x&&typeof x==='object'),settings:(d&&d.settings)||null,exportedAt:(d&&d.exportedAt)||null,loadedAt:Date.now()};
     saveStore();reflect();render();
-    alert(arr.length+'件のデータを読み込みました。');
+    alert(store.items.length?store.items.length+'件のデータを読み込みました。':'読み込みましたが、品目が0件のデータでした（PCで全部削除した後のバックアップかもしれません）。');
   }catch(err){alert('読み込めませんでした。消耗品管理システムの「バックアップ」JSON（supply_backup.json）を選択してください。')}};
   r.readAsText(f);
 });
 function fmtDate(ts){if(!ts)return '';const d=new Date(ts);return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`}
 function reflect(){
   const bar=document.getElementById('databar'),st=document.getElementById('dataStatus');
-  const has=store.items.length>0;
+  // 2026-10-25（D-2）: 品目0件のデータを読んだときも「データ未読込」と言わない（読込の失敗と区別できるように）
+  const has=store.items.length>0, loaded=has||!!store.loadedAt;
   ['stats','searchBox','filters'].forEach(id=>document.getElementById(id).classList.toggle('hidden',!has));
-  document.getElementById('help').classList.toggle('hidden',has);
-  if(has){
+  document.getElementById('help').classList.toggle('hidden',loaded);
+  if(loaded){
     bar.classList.add('loaded');
     const ex=store.exportedAt?new Date(store.exportedAt):null;
     const exs=ex&&!isNaN(ex)?`${ex.getFullYear()}/${String(ex.getMonth()+1).padStart(2,'0')}/${String(ex.getDate()).padStart(2,'0')} ${String(ex.getHours()).padStart(2,'0')}:${String(ex.getMinutes()).padStart(2,'0')}`:'';
-    st.textContent=`${store.items.length}件 · データ${exs?'：'+exs:'（読込 '+fmtDate(store.loadedAt)+'）'}`;
+    st.textContent=`${store.items.length}件${has?'':'（品目なし）'} · データ${exs?'：'+exs:'（読込 '+fmtDate(store.loadedAt)+'）'}`;
   }else{
     bar.classList.remove('loaded');
     st.textContent='データ未読込';
@@ -195,17 +207,24 @@ function renderStats(){
 }
 function renderFilters(){
   const cats=[...new Set(store.items.map(i=>i.cat).filter(Boolean))];
+  if(activeFilter!=='all'&&activeFilter!=='__need'&&!cats.includes(activeFilter))activeFilter='all'; // 読み直して無くなったカテゴリは「すべて」へ
   document.getElementById('filters').innerHTML=
     `<button class="chip ${activeFilter==='all'?'active':''}" onclick="setFilter('all')">すべて</button>`+
     `<button class="chip ${activeFilter==='__need'?'active':''}" onclick="setFilter('__need')">⚠ 要発注</button>`+
     cats.map(c=>`<button class="chip ${activeFilter===c?'active':''}" onclick="setFilter('${jsAttr(c)}')">${esc(c)}</button>`).join('');
 }
 function render(){
-  if(!store.items.length){document.getElementById('empty').style.display='block';document.getElementById('list').innerHTML='';return}
+  // 2026-10-25（10-01 K6）: 空の案内文は場面ごとに出し分ける（絞り込み0件の文言が残ったままにならないように）
+  const emp=document.getElementById('empty'),eP=emp.querySelector('p'),eH=emp.querySelector('.hint');
+  if(!store.items.length){emp.style.display='block';document.getElementById('list').innerHTML='';
+    if(store.loadedAt){eP.textContent='読み込んだデータに品目がありません';eH.textContent='PCの消耗品管理システムで全部削除した後のバックアップかもしれません。PC側をご確認ください'}
+    else{eP.textContent='データが読み込まれていません';eH.innerHTML='上の「データ読込」から、共有フォルダの<br>supply_backup.json を選んでください'}
+    return}
   renderStats();renderFilters();
   const q=(document.getElementById('search').value||'').trim().toLowerCase();
   let list=store.items.filter(i=>{
-    if(activeFilter==='__need'){if(!needsOrder(i))return false}
+    // C-7: 「⚠ 要発注」チップは上の件数と同じく未発注だけ（発注済みの品を店頭で二重に買わないように）
+    if(activeFilter==='__need'){if(!pendingOrder(i))return false}
     else if(activeFilter!=='all'&&i.cat!==activeFilter)return false;
     if(q){if(!((i.name||'')+' '+(i.cat||'')+' '+(i.sup||'')).toLowerCase().includes(q))return false}
     return true;
@@ -213,7 +232,7 @@ function render(){
   list.sort((a,b)=>{const d=STORDER[statusOf(a)]-STORDER[statusOf(b)];if(d)return d;const o=(a.ordered?1:0)-(b.ordered?1:0);if(o)return o;return String(a.name||'').localeCompare(String(b.name||''),'ja')});
   const el=document.getElementById('list');
   document.getElementById('empty').style.display=list.length?'none':'block';
-  if(!list.length){el.innerHTML='';document.getElementById('empty').querySelector('p').textContent='該当する消耗品がありません';document.getElementById('empty').querySelector('.hint').textContent='検索条件・フィルタを変更してください';return}
+  if(!list.length){el.innerHTML='';eP.textContent='該当する消耗品がありません';eH.textContent='検索条件・フィルタを変更してください';return}
   el.innerHTML=list.map(i=>{
     const s=statusOf(i),st=STLABEL[s];
     const rp=Number(i.rp)||0,qv=Number(i.qty)||0;
@@ -222,7 +241,7 @@ function render(){
     const col=s==='out'?'var(--red)':s==='low'?'var(--amber)':'var(--accent)';
     const u=safeUrl(i.url);
     const supTxt=esc(i.sup||(u?'購入先':'—'));
-    const supHtml=u?`<a class="sup-link" href="${u}" target="_blank" rel="noopener">${supTxt} ↗</a>`:`<span class="sup">${supTxt}</span>`;
+    const supHtml=u?`<a class="sup-link" href="${esc(u)}" target="_blank" rel="noopener">${supTxt} ↗</a>`:`<span class="sup">${supTxt}</span>`;
     return `<div class="card ${s!=='ok'?'warn':''}">
       <div class="card-top">
         <div><div class="c-name">${esc(i.name)}</div><div class="c-cat">${esc(i.cat||'未分類')}</div></div>
